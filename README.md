@@ -1,2 +1,2 @@
 # myip411
-Free community resource helping people diagnose internet problems and fight back against bad ISP service.
+Free community resource empowering people with knowledge to diagnose internet problems and get better ISP service.
