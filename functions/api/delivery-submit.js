@@ -85,19 +85,24 @@ export async function onRequestPost({ request, env }) {
       addr.dateDelivered = today;
       state.delivered_count = state.addresses.filter(a => a.delivered).length;
 
-      // Sync Flier Delivered checkbox back to Notion
-      await fetch(`https://api.notion.com/v1/pages/${addr.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization':  `Bearer ${env.NOTION_TOKEN}`,
-          'Notion-Version': '2022-06-28',
-          'Content-Type':   'application/json',
-        },
-        body: JSON.stringify({
-          properties: { 'Flier Delivered': { checkbox: true } },
-        }),
-      });
-    }
+      // Sync to Notion — wrapped so a Notion failure doesn't block the KV write
+try {
+  await fetch(`https://api.notion.com/v1/pages/${addr.id}`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization':  `Bearer ${env.NOTION_TOKEN}`,
+      'Notion-Version': '2022-06-28',
+      'Content-Type':   'application/json',
+    },
+    body: JSON.stringify({
+      properties: { 'Flier Delivered': { checkbox: true } },
+    }),
+  });
+} catch (notionErr) {
+  console.error('Notion sync failed (non-fatal):', notionErr);
+}
+
+await env.KV.put('state', JSON.stringify(state));
 
     await env.KV.put('state', JSON.stringify(state));
     return json({ success: true, earnings: calculateEarnings(state) });
