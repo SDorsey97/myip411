@@ -58,51 +58,45 @@ export async function onRequestPost({ request, env }) {
     const today = new Date().toISOString().split('T')[0];
 
     if (data.type === 'business') {
-      // ── Log a business placement ─────────────────────────────────────────
       if (!data.businessName?.trim()) {
         return json({ success: false, error: 'Business name is required.' }, 400);
       }
-
       state.businesses = state.businesses || [];
       state.businesses.push({
-        name:       data.businessName.trim(),
-        address:    (data.businessAddress ?? '').trim(),
-        dateLogged: today,
+        name:        data.businessName.trim(),
+        address:     (data.businessAddress ?? '').trim(),
+        dateLogged:  today,
       });
       state.business_count = state.businesses.length;
 
     } else {
-      // ── Mark a charted address as delivered ──────────────────────────────
       if (!data.addressId) {
         return json({ success: false, error: 'Address ID required.' }, 400);
       }
-
       const addr = (state.addresses || []).find(a => a.id === data.addressId);
-      if (!addr)           return json({ success: false, error: 'Address not found.' }, 404);
-      if (addr.delivered)  return json({ success: false, error: 'Already marked delivered.' }, 409);
+      if (!addr)          return json({ success: false, error: 'Address not found.' }, 404);
+      if (addr.delivered) return json({ success: false, error: 'Already marked delivered.' }, 409);
 
-      addr.delivered     = true;
-      addr.dateDelivered = today;
+      addr.delivered      = true;
+      addr.dateDelivered  = today;
       state.delivered_count = state.addresses.filter(a => a.delivered).length;
 
-      // Sync to Notion — wrapped so a Notion failure doesn't block the KV write
-try {
-  await fetch(`https://api.notion.com/v1/pages/${addr.id}`, {
-    method: 'PATCH',
-    headers: {
-      'Authorization':  `Bearer ${env.NOTION_TOKEN}`,
-      'Notion-Version': '2022-06-28',
-      'Content-Type':   'application/json',
-    },
-    body: JSON.stringify({
-      properties: { 'Flier Delivered': { checkbox: true } },
-    }),
-  });
-} catch (notionErr) {
-  console.error('Notion sync failed (non-fatal):', notionErr);
-}
-
-await env.KV.put('state', JSON.stringify(state));
+      try {
+        await fetch(`https://api.notion.com/v1/pages/${addr.id}`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization':  `Bearer ${env.NOTION_TOKEN}`,
+            'Notion-Version': '2022-06-28',
+            'Content-Type':   'application/json',
+          },
+          body: JSON.stringify({
+            properties: { 'Flier Delivered': { checkbox: true } },
+          }),
+        });
+      } catch (notionErr) {
+        console.error('Notion sync failed (non-fatal):', notionErr);
+      }
+    }
 
     await env.KV.put('state', JSON.stringify(state));
     return json({ success: true, earnings: calculateEarnings(state) });
