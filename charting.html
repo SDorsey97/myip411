@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MYIP411 — Field Tool</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f3f4f6; color: #111; min-height: 100vh; padding: 20px 16px 40px;
+    }
+    .container { max-width: 540px; margin: 0 auto; }
+
+    header { margin-bottom: 20px; }
+    header h1 { font-size: 18px; font-weight: 700; }
+    header p  { font-size: 13px; color: #6b7280; margin-top: 3px; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 6px; margin-bottom: 16px; }
+    .tab {
+      flex: 1; padding: 10px; font-size: 14px; font-weight: 600;
+      font-family: inherit; border: 2px solid #d1d5db; border-radius: 8px;
+      background: #fff; color: #6b7280; cursor: pointer; transition: all 0.15s;
+    }
+    .tab.active { border-color: #2563eb; background: #2563eb; color: #fff; }
+
+    /* Cards */
+    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 20px; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* Form */
+    .field { margin-bottom: 16px; }
+    label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 5px; }
+    label .opt { font-weight: 400; color: #9ca3af; margin-left: 4px; }
+    input[type="text"], textarea {
+      width: 100%; padding: 9px 12px; font-size: 14px; font-family: inherit;
+      border: 1px solid #d1d5db; border-radius: 6px; background: #fff; color: #111;
+      transition: border-color 0.15s; -webkit-appearance: none;
+    }
+    input:focus, textarea:focus {
+      outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+    }
+    textarea { resize: vertical; min-height: 70px; }
+    .addr-row { display: grid; grid-template-columns: 90px 1fr 80px; gap: 8px; }
+
+    .check-group { display: flex; flex-direction: column; gap: 10px; }
+    .check-item  { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+    .check-item input { width: 18px; height: 18px; accent-color: #2563eb; flex-shrink: 0; cursor: pointer; }
+    .check-item span  { font-size: 14px; color: #374151; line-height: 1.4; }
+
+    hr.div { border: none; border-top: 1px solid #f3f4f6; margin: 16px 0; }
+
+    button.primary {
+      width: 100%; padding: 11px; background: #2563eb; color: #fff;
+      font-size: 14px; font-weight: 600; font-family: inherit;
+      border: none; border-radius: 6px; cursor: pointer; transition: background 0.15s;
+    }
+    button.primary:hover    { background: #1d4ed8; }
+    button.primary:disabled { background: #93c5fd; cursor: not-allowed; }
+
+    .status {
+      margin-top: 12px; padding: 10px 12px; border-radius: 6px;
+      font-size: 14px; display: none;
+    }
+    .status.ok  { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+    .status.err { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+
+    /* Tally strip */
+    .tally {
+      margin-top: 14px; padding: 12px 14px;
+      background: #f3f4f6; border-radius: 8px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .tally .num { font-size: 22px; font-weight: 700; }
+    .tally .lbl { font-size: 12px; color: #6b7280; margin-top: 1px; }
+
+    /* Address list (delivery tab) */
+    .addr-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+    .addr-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 8px;
+      background: #fff; cursor: pointer; transition: all 0.15s;
+    }
+    .addr-item.delivered { background: #f0fdf4; border-color: #bbf7d0; cursor: default; }
+    .addr-item .addr-text { font-size: 14px; color: #111; }
+    .addr-item .addr-badge {
+      font-size: 12px; font-weight: 600; padding: 3px 8px;
+      border-radius: 4px; background: #2563eb; color: #fff; white-space: nowrap;
+    }
+    .addr-item.delivered .addr-badge { background: #16a34a; }
+    .addr-empty { font-size: 14px; color: #9ca3af; text-align: center; padding: 20px 0; }
+
+    .section-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; color: #9ca3af; margin-bottom: 8px;
+    }
+
+    @media (max-width: 420px) {
+      .addr-row { grid-template-columns: 80px 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>MYIP411 — Field Tool</h1>
+    <p>Phase 1: chart addresses. Phase 2: log deliveries.</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('chart')">📋 Chart Address</button>
+    <button class="tab"        onclick="switchTab('deliver')">📬 Log Delivery</button>
+  </div>
+
+  <!-- ── PHASE 1: CHART ─────────────────────────────────────────────────── -->
+  <div class="panel active" id="panel-chart">
+    <div class="card">
+      <form id="chartForm">
+        <div class="field">
+          <label>Address</label>
+          <div class="addr-row">
+            <input type="text" id="c-num"    placeholder="Number" required autocomplete="off" aria-label="Street number">
+            <input type="text" id="c-street" placeholder="Street name" required autocomplete="off" aria-label="Street name">
+            <input type="text" id="c-unit"   placeholder="Unit"   autocomplete="off" aria-label="Unit">
+          </div>
+        </div>
+        <div class="field">
+          <label>Notes <span class="opt">optional</span></label>
+          <div class="check-group" style="margin-bottom:10px">
+            <label class="check-item">
+              <input type="checkbox" id="c-mail">
+              <span>Mail deliverable</span>
+            </label>
+            <label class="check-item">
+              <input type="checkbox" id="c-walk">
+              <span>Comfortable walking this address</span>
+            </label>
+          </div>
+          <textarea id="c-notes" placeholder="Gate codes, dogs, anything useful..."></textarea>
+        </div>
+        <button type="submit" class="primary" id="chartBtn">Log Address</button>
+        <div class="status" id="chartStatus"></div>
+      </form>
+    </div>
+    <div class="tally">
+      <div><div class="num" id="chartCount">0</div><div class="lbl">logged this session</div></div>
+      <div style="text-align:right"><div class="num" id="chartEarnings">$0.00</div><div class="lbl">Phase 1 earned</div></div>
+    </div>
+  </div>
+
+  <!-- ── PHASE 2: DELIVER ───────────────────────────────────────────────── -->
+  <div class="panel" id="panel-deliver">
+    <div class="card">
+
+      <div class="section-label">Charted Addresses</div>
+      <div class="addr-list" id="addrList">
+        <div class="addr-empty" id="addrEmpty">Loading addresses...</div>
+      </div>
+
+      <hr class="div">
+
+      <div class="section-label">Log Business Placement</div>
+      <form id="bizForm">
+        <div class="field">
+          <label for="biz-name">Business Name</label>
+          <input type="text" id="biz-name" placeholder="e.g. Corner Coffee" required autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="biz-addr">Address <span class="opt">optional</span></label>
+          <input type="text" id="biz-addr" placeholder="Street address" autocomplete="off">
+        </div>
+        <button type="submit" class="primary" id="bizBtn">Log Business Placement (+$5.00)</button>
+        <div class="status" id="bizStatus"></div>
+      </form>
+    </div>
+
+    <div class="tally">
+      <div><div class="num" id="deliverCount">0</div><div class="lbl">delivered</div></div>
+      <div style="text-align:right"><div class="num" id="deliverEarnings">$0.00</div><div class="lbl">Phase 2 earned</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let sessionChartCount = 0;
+  let addresses = [];
+
+  // ── Tab switching ─────────────────────────────────────────────────────────
+  function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach((t, i) => {
+      t.classList.toggle('active', (i === 0) === (tab === 'chart'));
+    });
+    document.getElementById('panel-chart').classList.toggle('active', tab === 'chart');
+    document.getElementById('panel-deliver').classList.toggle('active', tab === 'deliver');
+    if (tab === 'deliver') loadAddresses();
+  }
+
+  // ── Load addresses for delivery tab ──────────────────────────────────────
+  async function loadAddresses() {
+    try {
+      const res  = await fetch('/api/earnings');
+      const data = await res.json();
+      if (!data.success) return;
+      addresses = data.addresses || [];
+      renderAddressList();
+      updateDeliveryTally(data.earnings);
+    } catch {}
+  }
+
+  function renderAddressList() {
+    const list  = document.getElementById('addrList');
+    const empty = document.getElementById('addrEmpty');
+
+    if (!addresses.length) {
+      empty.style.display = 'block';
+      empty.textContent   = 'No addresses charted yet.';
+      return;
+    }
+    empty.style.display = 'none';
+
+    list.innerHTML = '';
+    addresses.forEach(addr => {
+      const full = `${addr.streetNumber} ${addr.streetName}${addr.unit ? ' ' + addr.unit : ''}`;
+      const div  = document.createElement('div');
+      div.className = 'addr-item' + (addr.delivered ? ' delivered' : '');
+      div.innerHTML = `
+        <span class="addr-text">${full}</span>
+        <span class="addr-badge">${addr.delivered ? '✓ Delivered' : 'Deliver'}</span>
+      `;
+      if (!addr.delivered) {
+        div.onclick = () => markDelivered(addr.id, div);
+      }
+      list.appendChild(div);
+    });
+  }
+
+  async function markDelivered(addressId, el) {
+    el.style.opacity = '0.5';
+    el.style.pointerEvents = 'none';
+    try {
+      const res  = await fetch('/api/delivery-submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'address', addressId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        const addr = addresses.find(a => a.id === addressId);
+        if (addr) addr.delivered = true;
+        renderAddressList();
+        updateDeliveryTally(data.earnings);
+      } else {
+        el.style.opacity = '1';
+        el.style.pointerEvents = '';
+        alert(data.error || 'Failed to mark delivered.');
+      }
+    } catch {
+      el.style.opacity = '1';
+      el.style.pointerEvents = '';
+      alert('Network error. Try again.');
+    }
+  }
+
+  function updateDeliveryTally(e) {
+    if (!e) return;
+    document.getElementById('deliverCount').textContent    = e.delivered + (e.businesses ? ` (+${e.businesses} biz)` : '');
+    document.getElementById('deliverEarnings').textContent = '$' + e.phase2.toFixed(2);
+  }
+
+  // ── Chart form ────────────────────────────────────────────────────────────
+  document.getElementById('chartForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('chartBtn');
+    const st  = document.getElementById('chartStatus');
+    btn.disabled    = true;
+    btn.textContent = 'Logging...';
+    st.style.display = 'none';
+
+    const payload = {
+      streetNumber:    document.getElementById('c-num').value,
+      streetName:      document.getElementById('c-street').value,
+      unit:            document.getElementById('c-unit').value,
+      mailDeliverable: document.getElementById('c-mail').checked,
+      walkable:        document.getElementById('c-walk').checked,
+      notes:           document.getElementById('c-notes').value,
+    };
+
+    try {
+      const res  = await fetch('/api/chart-submit', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (data.success) {
+        sessionChartCount++;
+        document.getElementById('chartCount').textContent = sessionChartCount;
+        if (data.earnings) {
+          document.getElementById('chartEarnings').textContent = '$' + data.earnings.phase1.toFixed(2);
+        }
+        document.getElementById('c-num').value    = '';
+        document.getElementById('c-street').value = '';
+        document.getElementById('c-unit').value   = '';
+        document.getElementById('c-mail').checked = false;
+        document.getElementById('c-walk').checked = false;
+        document.getElementById('c-notes').value  = '';
+        st.className = 'status ok';
+        st.textContent = `✓ ${payload.streetNumber} ${payload.streetName} logged.`;
+        st.style.display = 'block';
+        document.getElementById('c-num').focus();
+      } else {
+        throw new Error(data.error || 'Unknown error');
+      }
+    } catch (err) {
+      st.className = 'status err';
+      st.textContent = `Error: ${err.message}`;
+      st.style.display = 'block';
+    }
+    btn.disabled = false;
+    btn.textContent = 'Log Address';
+  });
+
+  // ── Business form ─────────────────────────────────────────────────────────
+  document.getElementById('bizForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('bizBtn');
+    const st  = document.getElementById('bizStatus');
+    btn.disabled    = true;
+    btn.textContent = 'Logging...';
+    st.style.display = 'none';
+
+    const payload = {
+      type:            'business',
+      businessName:    document.getElementById('biz-name').value,
+      businessAddress: document.getElementById('biz-addr').value,
+    };
+
+    try {
+      const res  = await fetch('/api/delivery-submit', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (data.success) {
+        document.getElementById('biz-name').value = '';
+        document.getElementById('biz-addr').value = '';
+        updateDeliveryTally(data.earnings);
+        st.className = 'status ok';
+        st.textContent = `✓ ${payload.businessName} logged. +$5.00`;
+        st.style.display = 'block';
+      } else {
+        throw new Error(data.error || 'Unknown error');
+      }
+    } catch (err) {
+      st.className = 'status err';
+      st.textContent = `Error: ${err.message}`;
+      st.style.display = 'block';
+    }
+    btn.disabled    = false;
+    btn.textContent = 'Log Business Placement (+$5.00)';
+  });
+</script>
+</body>
+</html>

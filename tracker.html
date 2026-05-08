@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MYIP411 — My Earnings</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #111; color: #fff;
+      min-height: 100vh; padding: 24px 16px 48px;
+    }
+    .container { max-width: 440px; margin: 0 auto; }
+
+    /* Total */
+    .total-block { text-align: center; padding: 32px 0 24px; }
+    .total-label { font-size: 13px; font-weight: 600; text-transform: uppercase;
+                   letter-spacing: 0.08em; color: #6b7280; margin-bottom: 8px; }
+    .total-amount { font-size: 64px; font-weight: 800; letter-spacing: -2px;
+                    line-height: 1; color: #fff; }
+    .total-goal { font-size: 14px; color: #6b7280; margin-top: 8px; }
+
+    /* Cards */
+    .card {
+      background: #1f2937; border: 1px solid #374151;
+      border-radius: 12px; padding: 20px; margin-bottom: 12px;
+    }
+    .card-header { display: flex; justify-content: space-between; align-items: center;
+                   margin-bottom: 14px; }
+    .card-title  { font-size: 13px; font-weight: 700; text-transform: uppercase;
+                   letter-spacing: 0.06em; color: #9ca3af; }
+    .card-amount { font-size: 22px; font-weight: 800; color: #fff; }
+    .card-cap    { font-size: 12px; color: #6b7280; text-align: right; }
+    .capped-badge {
+      font-size: 12px; font-weight: 700; padding: 3px 8px;
+      border-radius: 6px; background: #16a34a; color: #fff;
+    }
+
+    /* Progress bar */
+    .bar-wrap {
+      position: relative; height: 12px; background: #374151;
+      border-radius: 100px; overflow: visible; margin: 6px 0 18px;
+    }
+    .bar-fill {
+      height: 100%; border-radius: 100px;
+      background: linear-gradient(90deg, #2563eb, #60a5fa);
+      transition: width 0.6s ease; max-width: 100%;
+    }
+    .bar-fill.complete { background: linear-gradient(90deg, #16a34a, #4ade80); }
+
+    /* Milestone markers */
+    .milestones { position: relative; height: 0; }
+    .milestone {
+      position: absolute; top: -19px; transform: translateX(-50%);
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+    }
+    .milestone-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      border: 2px solid #374151; background: #111;
+      z-index: 2; position: relative;
+    }
+    .milestone-dot.hit { background: #facc15; border-color: #facc15; }
+    .milestone-label {
+      font-size: 10px; color: #6b7280; white-space: nowrap; margin-top: 6px;
+    }
+    .milestone-label.hit { color: #facc15; font-weight: 700; }
+    .milestone-bonus {
+      font-size: 10px; color: #4b5563; white-space: nowrap;
+    }
+    .milestone-bonus.hit { color: #fbbf24; }
+
+    /* Stats row */
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .stat  { background: #111827; border-radius: 8px; padding: 12px; }
+    .stat-num { font-size: 24px; font-weight: 800; color: #fff; }
+    .stat-lbl { font-size: 12px; color: #6b7280; margin-top: 2px; }
+
+    /* Completion bonus */
+    .bonus-card {
+      background: #1f2937; border: 1px solid #374151;
+      border-radius: 12px; padding: 20px; margin-bottom: 12px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .bonus-card.locked { opacity: 0.5; }
+    .bonus-left  { }
+    .bonus-title { font-size: 13px; font-weight: 700; color: #9ca3af;
+                   text-transform: uppercase; letter-spacing: 0.06em; }
+    .bonus-desc  { font-size: 13px; color: #6b7280; margin-top: 4px; line-height: 1.4; }
+    .bonus-amount { font-size: 28px; font-weight: 800;
+                    color: #facc15; white-space: nowrap; }
+    .bonus-amount.locked { color: #374151; }
+
+    .refresh-note {
+      text-align: center; font-size: 12px; color: #4b5563; margin-top: 16px;
+    }
+    .refresh-note span { color: #6b7280; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div class="total-block">
+    <div class="total-label">Total Earned</div>
+    <div class="total-amount" id="totalAmount">$0.00</div>
+    <div class="total-goal">Goal: $180.00</div>
+  </div>
+
+  <!-- Phase 1 -->
+  <div class="card" id="p1card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Phase 1 — Charting</div>
+      </div>
+      <div style="text-align:right">
+        <div class="card-amount" id="p1amount">$0.00</div>
+        <div class="card-cap">cap: $75.00</div>
+      </div>
+    </div>
+
+    <!-- Bar -->
+    <div class="bar-wrap">
+      <div class="bar-fill" id="p1bar" style="width:0%"></div>
+    </div>
+
+    <!-- Milestone markers -->
+    <div class="milestones" style="margin-top:8px; margin-bottom:24px">
+      <div class="milestone" id="m-c25" style="left:33.3%">
+        <div class="milestone-dot" id="md-c25"></div>
+        <div class="milestone-label" id="ml-c25">25 houses</div>
+        <div class="milestone-bonus" id="mb-c25">+$5 bonus</div>
+      </div>
+      <div class="milestone" id="m-c50" style="left:66.6%">
+        <div class="milestone-dot" id="md-c50"></div>
+        <div class="milestone-label" id="ml-c50">50 houses</div>
+        <div class="milestone-bonus" id="mb-c50">+$8 bonus</div>
+      </div>
+      <div class="milestone" id="m-c75" style="left:100%">
+        <div class="milestone-dot" id="md-c75"></div>
+        <div class="milestone-label" id="ml-c75">75 houses</div>
+        <div class="milestone-bonus" id="mb-c75">+$12 bonus</div>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-num" id="chartedCount">0</div>
+        <div class="stat-lbl">houses charted</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num" id="p1status">In progress</div>
+        <div class="stat-lbl">status</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Phase 2 -->
+  <div class="card" id="p2card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Phase 2 — Delivery</div>
+      </div>
+      <div style="text-align:right">
+        <div class="card-amount" id="p2amount">$0.00</div>
+        <div class="card-cap">cap: $85.00</div>
+      </div>
+    </div>
+
+    <div class="bar-wrap">
+      <div class="bar-fill" id="p2bar" style="width:0%"></div>
+    </div>
+
+    <div class="milestones" style="margin-top:8px; margin-bottom:24px">
+      <div class="milestone" id="m-d25" style="left:50%">
+        <div class="milestone-dot" id="md-d25"></div>
+        <div class="milestone-label" id="ml-d25">25 fliers</div>
+        <div class="milestone-bonus" id="mb-d25">+$5 bonus</div>
+      </div>
+      <div class="milestone" id="m-d50" style="left:100%">
+        <div class="milestone-dot" id="md-d50"></div>
+        <div class="milestone-label" id="ml-d50">50 fliers</div>
+        <div class="milestone-bonus" id="mb-d50">+$10 bonus</div>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-num" id="deliveredCount">0</div>
+        <div class="stat-lbl">fliers delivered</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num" id="bizCount">0</div>
+        <div class="stat-lbl">businesses placed</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num" id="signupCount">0</div>
+        <div class="stat-lbl">email signups</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num" id="p2status">–</div>
+        <div class="stat-lbl">status</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Completion bonus -->
+  <div class="bonus-card locked" id="bonusCard">
+    <div class="bonus-left">
+      <div class="bonus-title">Two-Phase Completion Bonus</div>
+      <div class="bonus-desc">Complete both phases to unlock.</div>
+    </div>
+    <div class="bonus-amount locked" id="bonusAmount">$20.00</div>
+  </div>
+
+  <div class="refresh-note">Updates every 30 seconds. <span id="lastUpdate">—</span></div>
+</div>
+
+<script>
+  async function refresh() {
+    try {
+      const res  = await fetch('/api/earnings');
+      const data = await res.json();
+      if (!data.success) return;
+      const e = data.earnings;
+
+      // Total
+      document.getElementById('totalAmount').textContent = '$' + e.total.toFixed(2);
+
+      // Phase 1
+      document.getElementById('p1amount').textContent   = '$' + e.phase1.toFixed(2);
+      document.getElementById('chartedCount').textContent = e.charted;
+      const p1pct = Math.min((e.charted / 75) * 100, 100);
+      const p1bar = document.getElementById('p1bar');
+      p1bar.style.width = p1pct + '%';
+      if (e.phase1Complete || e.phase1Capped) p1bar.classList.add('complete');
+
+      // Phase 1 milestones
+      setMilestone('c25', e.m_charted_25);
+      setMilestone('c50', e.m_charted_50);
+      setMilestone('c75', e.m_charted_75);
+
+      // Phase 1 status
+      const p1s = document.getElementById('p1status');
+      if (e.phase1Complete) { p1s.textContent = '✓ Done'; p1s.style.color = '#4ade80'; }
+      else { p1s.textContent = 'In progress'; p1s.style.color = '#fff'; }
+
+      // Phase 2
+      document.getElementById('p2amount').textContent    = '$' + e.phase2.toFixed(2);
+      document.getElementById('deliveredCount').textContent = e.delivered;
+      document.getElementById('bizCount').textContent    = e.businesses;
+      document.getElementById('signupCount').textContent = e.signups;
+      const p2pct = Math.min((e.delivered / 50) * 100, 100);
+      const p2bar = document.getElementById('p2bar');
+      p2bar.style.width = p2pct + '%';
+      if (e.phase2Complete || e.phase2Capped) p2bar.classList.add('complete');
+
+      setMilestone('d25', e.m_delivered_25);
+      setMilestone('d50', e.m_delivered_50);
+
+      const p2s = document.getElementById('p2status');
+      if (e.phase2Complete) { p2s.textContent = '✓ Done'; p2s.style.color = '#4ade80'; }
+      else { p2s.textContent = '–'; p2s.style.color = '#fff'; }
+
+      // Completion bonus
+      const bonusCard   = document.getElementById('bonusCard');
+      const bonusAmount = document.getElementById('bonusAmount');
+      if (e.phase1Complete && e.phase2Complete) {
+        bonusCard.classList.remove('locked');
+        bonusAmount.classList.remove('locked');
+      }
+
+      document.getElementById('lastUpdate').textContent =
+        'Last updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch {}
+  }
+
+  function setMilestone(key, hit) {
+    const dot   = document.getElementById('md-' + key);
+    const label = document.getElementById('ml-' + key);
+    const bonus = document.getElementById('mb-' + key);
+    if (hit) {
+      dot.classList.add('hit');
+      label.classList.add('hit');
+      bonus.classList.add('hit');
+    }
+  }
+
+  refresh();
+  setInterval(refresh, 30000);
+</script>
+</body>
+</html>
