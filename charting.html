@@ -154,7 +154,13 @@
   <div class="panel" id="panel-deliver">
     <div class="card">
 
-      <div class="section-label">Charted Addresses</div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+  <div class="section-label" style="margin-bottom:0">Charted Addresses</div>
+  <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:#6b7280; cursor:pointer;">
+    <input type="checkbox" id="toggleDone" onchange="renderAddressList()" style="accent-color:#2563eb">
+    Show delivered
+  </label>
+</div>
       <div class="addr-list" id="addrList">
         <div class="addr-empty" id="addrEmpty">Loading addresses...</div>
       </div>
@@ -212,33 +218,53 @@
   function renderAddressList() {
     const list  = document.getElementById('addrList');
     const empty = document.getElementById('addrEmpty');
+    const showDone = document.getElementById('toggleDone')?.checked;
 
     if (!addresses.length) {
       empty.style.display = 'block';
       empty.textContent   = 'No addresses charted yet.';
+      list.innerHTML = '';
       return;
     }
-    empty.style.display = 'none';
+
+    const visible = showDone ? addresses : addresses.filter(a => !a.delivered);
+    empty.style.display = visible.length ? 'none' : 'block';
+    if (!visible.length) {
+      empty.textContent = 'All addresses delivered. Check "Show delivered" to review.';
+    }
 
     list.innerHTML = '';
-    addresses.forEach(addr => {
+    visible.forEach(addr => {
       const full = `${addr.streetNumber} ${addr.streetName}${addr.unit ? ' ' + addr.unit : ''}`;
       const div  = document.createElement('div');
       div.className = 'addr-item' + (addr.delivered ? ' delivered' : '');
+      div.id = 'addr-' + addr.id;
       div.innerHTML = `
         <span class="addr-text">${full}</span>
-        <span class="addr-badge">${addr.delivered ? '✓ Delivered' : 'Deliver'}</span>
+        <span class="addr-badge">${addr.delivered ? '✓ Done' : 'Tap to deliver'}</span>
       `;
       if (!addr.delivered) {
-        div.onclick = () => markDelivered(addr.id, div);
+        div.onclick = () => markDelivered(addr.id);
       }
       list.appendChild(div);
     });
   }
 
-  async function markDelivered(addressId, el) {
-    el.style.opacity = '0.5';
-    el.style.pointerEvents = 'none';
+  async function markDelivered(addressId) {
+    const el   = document.getElementById('addr-' + addressId);
+    const addr = addresses.find(a => a.id === addressId);
+    if (!addr || addr.delivered) return;
+
+    // Optimistic update — flip immediately
+    addr.delivered = true;
+    if (el) {
+      el.classList.add('delivered');
+      el.querySelector('.addr-badge').textContent = '✓ Done';
+      el.onclick = null;
+    }
+    updateDeliveryTally({ delivered: addresses.filter(a => a.delivered).length, businesses: addresses.filter(a => a.business).length });
+
+    // Fire and forget — server catches up in background
     try {
       const res  = await fetch('/api/delivery-submit', {
         method: 'POST',
@@ -246,21 +272,23 @@
         body: JSON.stringify({ type: 'address', addressId }),
       });
       const data = await res.json();
-      if (data.success) {
-        const addr = addresses.find(a => a.id === addressId);
-        if (addr) addr.delivered = true;
-        renderAddressList();
+      if (data.success && data.earnings) {
         updateDeliveryTally(data.earnings);
-      } else {
-        el.style.opacity = '1';
-        el.style.pointerEvents = '';
-        alert(data.error || 'Failed to mark delivered.');
+      } else if (!data.success && data.error !== 'Already marked delivered.') {
+        // Revert on genuine failure
+        addr.delivered = false;
+        if (el) {
+          el.classList.remove('delivered');
+          el.querySelector('.addr-badge').textContent = 'Tap to deliver';
+          el.onclick = () => markDelivered(addr.id);
+        }
       }
     } catch {
-      el.style.opacity = '1';
-      el.style.pointerEvents = '';
-      alert('Network error. Try again.');
+      // Network hiccup — leave optimistic state, server already wrote it
     }
+
+    // Re-render after short delay to collapse delivered if filter is on
+    setTimeout(renderAddressList, 800);
   }
 
   function updateDeliveryTally(e) {

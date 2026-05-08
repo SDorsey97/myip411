@@ -200,10 +200,14 @@
       btn.textContent = 'Signing up...';
       status.style.display = 'none';
 
+      const params = new URLSearchParams(window.location.search);
+      const source = params.get('ref') || '';
+
       const payload = {
         name:          document.getElementById('name').value,
         email:         document.getElementById('email').value,
         streetAddress: document.getElementById('streetAddress').value,
+        source:        source,
       };
 
       try {

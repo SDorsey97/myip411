@@ -60,6 +60,7 @@ export async function onRequestPost({ request, env }) {
         to:      [email],
         subject: "You're on the list — MYIP411",
         html:    confirmationEmailHtml(name),
+        headers: ['List-Unsubscribe'],
       }),
     });
 
