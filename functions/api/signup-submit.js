@@ -78,23 +78,25 @@ export async function onRequestPost({ request, env }) {
       });
     }
     // Add contact to Resend with segment and topic
-  try {
-  await fetch('https://api.resend.com/contacts', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${env.RESEND_API_KEY}`,
-      'Content-Type':  'application/json',
-    },
-    body: JSON.stringify({
-      email:      email,
-      first_name: name,
-      segments:   [{ id: env.RESEND_SEGMENT_ID }],
-      topics:     [{ id: env.RESEND_TOPIC_ID, subscription: 'opt_in' }],
-    }),
-  });
-  } catch (contactErr) {
-  console.error('Resend contact create failed (non-fatal):', contactErr);
-}    
+    try {
+      const contactRes = await fetch('https://api.resend.com/contacts', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+          'Content-Type':  'application/json',
+        },
+        body: JSON.stringify({
+          email:      email,
+          first_name: name,
+          segments:   [{ id: env.RESEND_SEGMENT_ID }],
+          topics:     [{ id: env.RESEND_TOPIC_ID, subscription: 'opt_in' }],
+        }),
+      });
+      const contactData = await contactRes.json();
+      console.log('Resend contact result:', JSON.stringify(contactData));
+    } catch (contactErr) {
+      console.error('Resend contact create failed:', contactErr);
+    }
     // ── KV increment — only if signup came from the flier QR code ────────────
     if (data.source === 'flier') {
       const raw   = await env.KV.get('state');
