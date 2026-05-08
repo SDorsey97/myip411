@@ -217,21 +217,19 @@
   }
 
   function renderAddressList() {
-    const list  = document.getElementById('addrList');
-    const empty = document.getElementById('addrEmpty');
+    const list     = document.getElementById('addrList');
     const showDone = document.getElementById('toggleDone')?.checked;
 
     if (!addresses.length) {
-      empty.style.display = 'block';
-      empty.textContent   = 'No addresses charted yet.';
-      list.innerHTML = '';
+      list.innerHTML = '<div class="addr-empty">No addresses charted yet.</div>';
       return;
     }
 
     const visible = showDone ? addresses : addresses.filter(a => !a.delivered);
-    empty.style.display = visible.length ? 'none' : 'block';
+
     if (!visible.length) {
-      empty.textContent = 'All addresses delivered. Check "Show delivered" to review.';
+      list.innerHTML = '<div class="addr-empty">All addresses delivered. Check "Show delivered" to review.</div>';
+      return;
     }
 
     list.innerHTML = '';
